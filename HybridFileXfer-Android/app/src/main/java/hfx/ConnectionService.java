@@ -12,6 +12,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +57,9 @@ public class ConnectionService extends Service {
 
     private static void startServiceIfNeed(Context context) {
         try {
-            context.startForegroundService(new Intent(context, ConnectionService.class));
+            // minSdk 24：startForegroundService 是 API 26 才有的，
+            // ContextCompat 会在 O 以下退化为 startService，避免新 API 越界崩溃。
+            ContextCompat.startForegroundService(context, new Intent(context, ConnectionService.class));
         } catch (Throwable t) {
             // 后台启动限制等异常：保活失败只降级不断连，记录即可
             Log.w(TAG, "startForegroundService failed", t);

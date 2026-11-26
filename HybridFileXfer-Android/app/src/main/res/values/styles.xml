@@ -20,8 +20,11 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:background">@drawable/bg_chip</item>
         <item name="android:gravity">center</item>
-        <item name="android:paddingHorizontal">@dimen/chip_pad_h</item>
-        <item name="android:paddingVertical">@dimen/chip_pad_v</item>
+        <!-- minSdk 24：paddingHorizontal/Vertical 是 API 26 才有的，拆成四个方向 -->
+        <item name="android:paddingStart">@dimen/chip_pad_h</item>
+        <item name="android:paddingEnd">@dimen/chip_pad_h</item>
+        <item name="android:paddingTop">@dimen/chip_pad_v</item>
+        <item name="android:paddingBottom">@dimen/chip_pad_v</item>
         <item name="android:textColor">@color/accent</item>
         <item name="android:textSize">@dimen/text_sub</item>
     </style>
