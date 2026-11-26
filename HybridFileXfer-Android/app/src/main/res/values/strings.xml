@@ -159,6 +159,7 @@
     <string name="scan_lan">Scan LAN</string>
     <string name="scan">Scan</string>
     <string name="scanning_lan">Scanning LAN…</string>
+    <string name="scan_paused_connected">Connected. LAN scan paused.</string>
     <string name="scan_found_devices">Found %1$d device(s)</string>
     <string name="scan_no_devices">No devices found. Enter the IP manually.</string>
     <string name="scan_no_devices_local">No devices found · this device %1$s\nMake sure both devices are on the same Wi-Fi and the other app is in the foreground</string>
@@ -188,6 +189,10 @@
     <string name="local_list_limited_hint">No "All files access": only folders are visible, permission is requested when you transfer</string>
     <string name="remote_list_limited">The other device has not granted storage permission; some files are hidden</string>
     <string name="storage_permission_needed_for_action">"All files access" is required to continue: %1$s</string>
+    <string name="storage_permission_title">File access permission needed</string>
+    <string name="storage_permission_message">Reading and writing phone files requires "All files access". Without it the PC can only see folders and cannot transfer files. Allow this app to access all files in system settings.</string>
+    <string name="storage_permission_open">Open</string>
+    <string name="later">Later</string>
     <string name="storage_needed_upload">Upload needs "All files access" (to read the selected files). Grant it and try again.</string>
     <string name="storage_needed_download">Download needs "All files access" (to write into the target folder). Grant it and try again.</string>
     <string name="permission_timeout_denied">Request timed out. This request was denied.</string>
@@ -197,9 +202,9 @@
     <string name="peer_denied_read">Peer denied providing files (read).</string>
     <string name="denied_write_request">Denied this write request.</string>
     <string name="denied_read_request">Denied this read request.</string>
-    <string name="local_network_permission_message">Android 16+ requires Local Network permission; otherwise LAN devices cannot be scanned or connected.</string>
+    <string name="local_network_permission_message">Android 17+ requires Local Network permission; otherwise LAN devices cannot be scanned or connected.</string>
     <string name="go_to_settings">Open settings</string>
-    <string name="local_network_granted">Local Network permission granted. Please try again.</string>
+    <string name="local_network_granted">Local Network permission granted.</string>
     <string name="local_network_denied">Local Network permission is required.</string>
     <string name="restart_app_required">Please restart the app before connecting.</string>
     <string name="auxiliary_channel_lost">Auxiliary channel lost; transfer continues.</string>
@@ -216,12 +221,12 @@
     <string name="channels">Channels</string>
     <string name="start_transfer">Tap to start transferring files</string>
     <string name="net_interfaces">Network interfaces</string>
-    <string name="disconnect">Disconnect</string>
+    <string name="disconnect">Stop service</string>
     <string name="not_connected">Not connected</string>
     <string name="config_change_after_disconnect">This change takes effect after disconnecting</string>
     <string name="storage_permission_needed">File access permission is required. Grant it and try again.</string>
     <string name="status_bind_failed">Port %1$d is in use; cannot wait for a connection</string>
-    <string name="local_network_needed">Local Network permission is required. Grant it from Scan in Advanced settings.</string>
+    <string name="local_network_needed">Local Network permission is required. It will be requested again when you tap Scan or connect.</string>
     <string name="adb_mode_hint">The PC must run adb forward first; remaining channels are validated automatically after connecting.</string>
     <string name="lan_mode_hint">Remaining channels are validated automatically after connecting.</string>
     <string name="status_shizuku_required">Shizuku is required for Root/Shizuku file access.</string>

@@ -58,7 +58,7 @@ import hfx.jdk.JdkHFXClient;
  *   <li>扫描/连接/断开全部手动触发，启动不扫描、不连接；</li>
  *   <li>权限区固定高度、平时留空，读写授权在窗口内完成；</li>
  *   <li>速度只在连接后显示，1s 刷新；</li>
- *   <li>ADB 按钮只复用现有 adb forward + 取 IP，不改变 CLI 的 adb 行为。</li>
+ *   <li>ADB 按钮点下后先重置 adb（杀掉全部 adb.exe 再拉起 server），再做 forward + 取 IP。</li>
  * </ul>
  */
 public final class PcWindow implements ConsentProvider {
@@ -313,9 +313,11 @@ public final class PcWindow implements ConsentProvider {
         scanButton.setEnabled(false);
         setStatus(Strings.get("adb_forwarding"));
         Thread thread = new Thread(() -> {
-            final boolean forwarded = Main.executeAdbForwardCommand(5740, adbDevice);
-            final String lan = forwarded ? Main.chooseAdbControlAddress(adbDevice) : null;
-            final String address = forwarded ? (lan != null ? lan : "127.0.0.1") : null;
+            // 点 ADB 连接先重置 adb（杀掉全部 adb.exe 再拉起），清掉 USB/无线并存时的多传输态；
+            // 未指定 -s 时自动选唯一 USB 设备，避免 forward 报 more than one device/emulator
+            final String target = Main.restartAdbAndForward(5740, adbDevice);
+            final String lan = target != null ? Main.chooseAdbControlAddress(target) : null;
+            final String address = target != null ? (lan != null ? lan : "127.0.0.1") : null;
             SwingUtilities.invokeLater(() -> {
                 adbButton.setEnabled(true);
                 scanButton.setEnabled(true);

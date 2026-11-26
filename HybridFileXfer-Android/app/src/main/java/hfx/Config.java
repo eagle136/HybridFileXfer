@@ -101,4 +101,18 @@ public class Config {
     public String getConnectServerControllerIp(){
         return preferences.getString("connect_server_controller_ip","");
     }
+
+    /**
+     * 是否已经自动申请过一次 Android 17+ 的本地网络权限。
+     * <p>
+     * 自动申请只在首次启动弹一次系统框；用户拒绝后不再每次启动重复打扰，
+     * 改由用户主动点“扫描/连接”时再申请（见 MainActivity 的权限流程）。
+     */
+    public boolean isLocalNetworkPrompted() {
+        return preferences.getBoolean("local_network_prompted", false);
+    }
+
+    public void setLocalNetworkPrompted(boolean prompted) {
+        preferences.edit().putBoolean("local_network_prompted", prompted).apply();
+    }
 }

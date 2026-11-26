@@ -14,10 +14,10 @@ android {
         applicationId "top.weixiansen574.hybridfilexfer"
         minSdk 24
         targetSdk 37
-        // 330 = 协议版本 VERSION_CODE（3.3）。握手与传输信令随权限验证、开销优化调整，
-        // 与 3.2.x 的字节流不兼容，双端必须同时升级。
-        versionCode 330
-        versionName "3.3"
+        // 协议版本 VERSION_CODE 仍是 330：线格式与 3.3 开发版一致，双端可互通；
+        // 应用对外版本号改为 3.2（此前 3.3 的版本号是误标）。
+        versionCode 320
+        versionName "3.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"// 指定目标 CPU 架构

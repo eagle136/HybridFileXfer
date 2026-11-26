@@ -2,6 +2,7 @@ package hfx;
 
 import android.app.ActivityManager;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -73,12 +74,18 @@ public class MainActivity extends BaseActivity
     public static final int REQUEST_CODE_TRANSFER = 2;
     public static final int REQUEST_CODE_LOCAL_NETWORK = 3;
     public static final int REQUEST_CODE_POST_NOTIFICATIONS = 4;
+    /** Android 10 及以下走经典存储运行时权限 */
+    public static final int REQUEST_CODE_STORAGE = 5;
     public static final int RESULT_CODE_SERVER_DISCONNECT = 1;
 
     private static final String TAG = "HFXD";
 
-    /** Android 16 (API 36) 起局域网包按 uid 管控 */
-    private static final int SDK_LOCAL_NETWORK = 36;
+    /**
+     * Android 17 (API 37) 起才真正提供本地网络运行时权限。
+     * Android 16（API 36）系统里并没有注册 ACCESS_LOCAL_NETWORK：
+     * 申请只会被立刻回调为拒绝，旧代码因此把它当成“用户拒绝”反复弹窗。
+     */
+    private static final int SDK_LOCAL_NETWORK = 37;
     private static final String PERMISSION_LOCAL_NETWORK =
             "android.permission.ACCESS_LOCAL_NETWORK";
 
@@ -88,6 +95,7 @@ public class MainActivity extends BaseActivity
     Button toTransfer;
     ListView deviceList;
     TextView scanStatus;
+    TextView scanChip;
     ArrayAdapter<Discovery.Device> deviceAdapter;
     Context context;
     private boolean isShizuku = false;
@@ -135,6 +143,22 @@ public class MainActivity extends BaseActivity
     private boolean ignoreModeSelection;
     /** 本地网络权限授予后是否继续刚才的扫描（只有用户主动点扫描才置 true） */
     private boolean scanAfterLocalNetworkGrant;
+    /**
+     * 本地网络权限系统框是否在途。系统同一时刻只受理一个 requestPermissions，
+     * 在途时再申请会被立刻回调成“取消/拒绝”——旧实现在这里漏了判断，
+     * 首次启动的两条自动路径和 8s 自动扫描叠加申请，才出现高频弹窗。
+     */
+    private boolean localNetworkRequestInFlight;
+    /** 本次申请是否由用户主动操作触发：自动路径被拒只更新提示，不弹设置引导 */
+    private boolean localNetworkRequestByUser;
+    /** 本进程内是否已经被拒绝过一次，用来判断系统还会不会再弹框 */
+    private boolean localNetworkDeniedBefore;
+    /** “本地网络权限”设置引导框：同一时刻只保留一个，避免回调叠加时重复弹 */
+    private AlertDialog localNetworkDialog;
+    /** 启动时的文件读写权限提示是否已弹过（进程级，旋转/重建不重复弹） */
+    private static boolean storagePromptHandled;
+    /** 文件读写权限引导框 */
+    private AlertDialog storageDialog;
     /** API 33+ 通知权限是否已申请过（只弹一次系统框） */
     private boolean notificationPermissionRequested;
     /**
@@ -147,10 +171,11 @@ public class MainActivity extends BaseActivity
     private final Runnable autoScanTick = new Runnable() {
         @Override
         public void run() {
-            if (!resumed) {
+            // 已连上会话时不再扫描：列表只用于发起连接，扫了也没用
+            if (!resumed || HFXServer.instance != null) {
                 return;
             }
-            startHomeScan();
+            startHomeScan(false);
         }
     };
 
@@ -203,7 +228,8 @@ public class MainActivity extends BaseActivity
             // 谁点击谁保持主控：统一走反向连接，对方确认后作为客户端连入本机服务端
             requestReverseConnect(device);
         });
-        findViewById(R.id.refresh_devices).setOnClickListener(v -> startHomeScan());
+        scanChip = findViewById(R.id.refresh_devices);
+        scanChip.setOnClickListener(v -> startHomeScan(true));
         findViewById(R.id.refresh).setOnClickListener(this);
         findViewById(R.id.advanced_toggle).setOnClickListener(v -> setAdvancedOpen(!advancedOpen));
 
@@ -328,10 +354,19 @@ public class MainActivity extends BaseActivity
         } else if (HFXServer.instance != null && server != HFXServer.instance) {
             adoptLiveSession();
         }
-        maybeAutoStartServer();
         applyScreenScale();
+        if (isLocalNetworkBlocked()) {
+            // 本地网络没授权：除了申请权限和状态提示，什么都不做——
+            // 不起等待服务端、不扫描、不排轮询，避免授权前产生任何网络动作。
+            showLocalNetworkNeededStatus();
+            ensureLocalNetworkPermission(true, false);
+            return;
+        }
+        maybeAutoStartServer();
         // 立刻扫一次，之后由 autoScanTick 每 8s 轮询
         scheduleAutoScan(0L);
+        // 文件读写权限放最后：本地网络权限框优先，避免两个弹窗叠在一起
+        checkStoragePermissionOnStart();
     }
 
     @Override
@@ -360,11 +395,10 @@ public class MainActivity extends BaseActivity
         if (spinnerMode == null || netCardsAdapter == null) {
             return;
         }
-        if (Build.VERSION.SDK_INT >= SDK_LOCAL_NETWORK
-                && ContextCompat.checkSelfPermission(this, PERMISSION_LOCAL_NETWORK)
-                != PackageManager.PERMISSION_GRANTED) {
-            txvStatus.setText(R.string.local_network_needed);
-            checkLocalNetworkPermissionOrRequest(false);
+        if (isLocalNetworkBlocked()) {
+            // 授权前只留提示：不起服务端、不建任何 socket
+            showLocalNetworkNeededStatus();
+            ensureLocalNetworkPermission(false, false);
             return;
         }
         int mode = spinnerMode.getSelectedItemPosition();
@@ -437,7 +471,7 @@ public class MainActivity extends BaseActivity
     }
 
     public void startServer() {
-        if (checkLocalNetworkPermissionOrRequest(false)) {
+        if (ensureLocalNetworkPermission(false, true)) {
             return;
         }
         List<ServerNetInterface> selectedInterfaces = selectedServerInterfaces();
@@ -510,6 +544,7 @@ public class MainActivity extends BaseActivity
         }
         renderChannels(live.getConnectionListINames());
         showConnectedStatus();
+        stopLanScanForSession();
         syncConnectionForeground();
         ConnectionLocks.acquire(getApplicationContext());
         SessionIdleTimer.start(SessionIdleTimer.KEY_SERVER, MainActivity::onServerIdleTimeout);
@@ -613,6 +648,7 @@ public class MainActivity extends BaseActivity
                 HFXServer.instance = null;
                 resetConnectedStatus();
                 syncConnectionForeground();
+                resumeLanScanAfterSession();
                 List<ServerNetInterface> selected = netCardsAdapter.getSelectedInterfaces();
                 if (selected == null) {
                     return;
@@ -663,6 +699,7 @@ public class MainActivity extends BaseActivity
                 invitedReverseName = null;
                 renderChannels(server.getConnectionListINames());
                 showConnectedStatus();
+                stopLanScanForSession();
                 syncConnectionForeground();
                 ConnectionLocks.acquire(getApplicationContext());
                 SessionIdleTimer.start(SessionIdleTimer.KEY_SERVER,
@@ -733,6 +770,11 @@ public class MainActivity extends BaseActivity
                 ColorStateList.valueOf(ContextCompat.getColor(this, dotColor)));
         disconnectBtn.setEnabled(listening);
         toTransfer.setEnabled(connected);
+        if (scanChip != null) {
+            // 已连接时不需要再扫局域网，按钮置灰防止误点
+            scanChip.setEnabled(!connected);
+            scanChip.setAlpha(connected ? 0.5f : 1f);
+        }
         channelsDivider.setVisibility(
                 connectionsView.getChildCount() > 0 ? View.VISIBLE : View.GONE);
     }
@@ -768,21 +810,90 @@ public class MainActivity extends BaseActivity
     }
 
     /**
-     * Android 16+ 的本地网络权限。返回 true 表示已发起申请、本次动作应中止；
-     * 授予后再点一次原按钮即可（权限检查在建任何 socket 之前）。
+     * 平台是否真的定义了 ACCESS_LOCAL_NETWORK。
+     * <p>
+     * 权限从 Android 17（API 37）起提供；即便 SDK 达标，个别 ROM 也可能没内置，
+     * 此时 checkSelfPermission 永远返回拒绝、requestPermissions 立刻回调拒绝。
+     * 系统没有这个权限 = 不会做局域网管控，按老逻辑正常扫描/起服务即可。
      */
-    private boolean checkLocalNetworkPermissionOrRequest(boolean forScan) {
+    private boolean isLocalNetworkPermissionSupported() {
         if (Build.VERSION.SDK_INT < SDK_LOCAL_NETWORK) {
             return false;
         }
-        if (ContextCompat.checkSelfPermission(this, PERMISSION_LOCAL_NETWORK)
-                == PackageManager.PERMISSION_GRANTED) {
+        try {
+            getPackageManager().getPermissionInfo(PERMISSION_LOCAL_NETWORK, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
-        scanAfterLocalNetworkGrant = forScan;
-        ActivityCompat.requestPermissions(this,
-                new String[]{PERMISSION_LOCAL_NETWORK}, REQUEST_CODE_LOCAL_NETWORK);
+    }
+
+    /** 权限存在且未授权：在授权完成前，不扫描、不起服务端、不建 socket。 */
+    private boolean isLocalNetworkBlocked() {
+        return isLocalNetworkPermissionSupported()
+                && ContextCompat.checkSelfPermission(this, PERMISSION_LOCAL_NETWORK)
+                != PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Android 17+ 的本地网络权限。返回 true 表示当前缺权限、本次动作应中止。
+     * <p>
+     * 申请策略（旧实现没有这层收敛，首次启动会被三条路径反复申请）：
+     * <ul>
+     *   <li>系统框在途时不再重复申请——重复申请会被系统立即回调为“拒绝”；</li>
+     *   <li>自动路径（进入前台自动起服务端 / 自动扫描）只在首次启动弹一次系统框，
+     *       用户拒绝过就不再自动打扰，只在状态栏提示；</li>
+     *   <li>用户主动点扫描/刷新/连接/起服务端时仍会申请（系统不再弹框时直接引导去设置）。</li>
+     * </ul>
+     *
+     * @param forScan      授权后是否继续刚才的扫描
+     * @param userInitiated 是否由用户主动操作触发
+     */
+    private boolean ensureLocalNetworkPermission(boolean forScan, boolean userInitiated) {
+        if (!isLocalNetworkBlocked()) {
+            return false;
+        }
+        // 状态标记先更新：在途申请的结果回调会读到最新意图
+        if (forScan) {
+            scanAfterLocalNetworkGrant = true;
+        }
+        if (userInitiated) {
+            localNetworkRequestByUser = true;
+        }
+        if (localNetworkRequestInFlight) {
+            return true;
+        }
+        // 用户主动操作但系统已不会再弹框（拒绝两次后）：直接引导去设置，不再空发申请
+        if (userInitiated && localNetworkDeniedBefore
+                && !ActivityCompat.shouldShowRequestPermissionRationale(
+                this, PERMISSION_LOCAL_NETWORK)) {
+            showLocalNetworkSettingsDialog();
+            return true;
+        }
+        // 自动路径：只在从未自动申请过时问一次，之后一律只提示不弹框
+        if (!userInitiated && config != null && config.isLocalNetworkPrompted()) {
+            return true;
+        }
+        localNetworkRequestInFlight = true;
+        if (!userInitiated && config != null) {
+            config.setLocalNetworkPrompted(true);
+        }
+        try {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{PERMISSION_LOCAL_NETWORK}, REQUEST_CODE_LOCAL_NETWORK);
+        } catch (Throwable t) {
+            // 界面已销毁等异常：清掉在途标记，避免后续动作被永久卡住
+            localNetworkRequestInFlight = false;
+            Log.w(TAG, "request local network permission failed", t);
+        }
         return true;
+    }
+
+    /** 缺本地网络权限时只刷新提示文案，不弹任何框：自动轮询会反复走到这里。 */
+    private void showLocalNetworkNeededStatus() {
+        txvStatus.setText(R.string.local_network_needed);
+        scanStatus.setText(R.string.local_network_needed);
+        syncStatusUi();
     }
 
     /**
@@ -835,7 +946,13 @@ public class MainActivity extends BaseActivity
     }
 
     private void showLocalNetworkSettingsDialog() {
-        new AlertDialog.Builder(this)
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (localNetworkDialog != null && localNetworkDialog.isShowing()) {
+            return;
+        }
+        localNetworkDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.local_network_denied)
                 .setMessage(R.string.local_network_permission_message)
                 .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
@@ -844,7 +961,99 @@ public class MainActivity extends BaseActivity
                     startActivity(intent);
                 })
                 .setNegativeButton(R.string.cancel, null)
+                .setOnDismissListener(dialog -> localNetworkDialog = null)
                 .show();
+    }
+
+    /**
+     * 启动时检查文件读写权限：没有「所有文件访问」就先说明，确认后跳到系统开关。
+     * <p>
+     * Android 11 起 READ/WRITE_EXTERNAL_STORAGE 已被系统忽略，真正生效的是
+     * MANAGE_EXTERNAL_STORAGE，它没有运行时弹窗，只能跳到系统设置页手动开启。
+     * 每个进程只提示一次，避免旋转/回前台反复弹。
+     */
+    private void checkStoragePermissionOnStart() {
+        // 只有用户在弹窗里做过选择才算“已提示”：否则 Activity 被重建/弹窗被系统收起后
+        // 静态标记会阻止补弹，看起来就像弹窗自己关掉了。
+        if (storagePromptHandled || isFinishing() || isDestroyed()) {
+            return;
+        }
+        Log.i(TAG, "storage check mode=" + (config == null ? -1 : config.getMode())
+                + " sdk=" + Build.VERSION.SDK_INT
+                + " access=" + hasStorageAccess());
+        // Root/Shizuku 的 IO 服务不受分区存储限制，无需申请
+        if (config != null && config.getMode() != Config.MODE_NORMAL) {
+            return;
+        }
+        if (hasStorageAccess()) {
+            return;
+        }
+        showStoragePermissionDialog();
+    }
+
+    private boolean hasStorageAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        return ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void showStoragePermissionDialog() {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (storageDialog != null && storageDialog.isShowing()) {
+            return;
+        }
+        storageDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.storage_permission_title)
+                .setMessage(R.string.storage_permission_message)
+                .setPositiveButton(R.string.storage_permission_open,
+                        (dialog, which) -> {
+                            storagePromptHandled = true;
+                            openStorageAccessSettings();
+                        })
+                .setNegativeButton(R.string.later,
+                        (dialog, which) -> storagePromptHandled = true)
+                // 返回键/点外部关掉也视为用户已看过，避免焦点回来又补弹
+                .setOnCancelListener(dialog -> storagePromptHandled = true)
+                .setOnDismissListener(dialog -> {
+                    if (storageDialog == dialog) {
+                        storageDialog = null;
+                    }
+                })
+                .show();
+    }
+
+    /** 窗口重新拿到焦点（从设置页回来、Activity 重建后）再补一次检查。 */
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            checkStoragePermissionOnStart();
+        }
+    }
+
+    /** 跳到本应用的「所有文件访问」开关；个别 ROM 没有单应用页就退到总列表。 */
+    private void openStorageAccessSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+                return;
+            } catch (ActivityNotFoundException ignored) {
+            }
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+            } catch (ActivityNotFoundException ignored) {
+            }
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_CODE_STORAGE);
+        }
     }
 
     @Override
@@ -852,18 +1061,36 @@ public class MainActivity extends BaseActivity
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CODE_LOCAL_NETWORK) {
-            boolean granted = grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            localNetworkRequestInFlight = false;
+            boolean byUser = localNetworkRequestByUser;
+            boolean wantScan = scanAfterLocalNetworkGrant;
+            localNetworkRequestByUser = false;
+            scanAfterLocalNetworkGrant = false;
+            if (grantResults.length == 0) {
+                // 申请被系统取消（界面重建等）：不当成拒绝，也不弹任何框
+                showLocalNetworkNeededStatus();
+                return;
+            }
+            boolean granted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted) {
-                Toast.makeText(context, R.string.local_network_granted, Toast.LENGTH_SHORT).show();
+                localNetworkDeniedBefore = false;
+                if (byUser) {
+                    Toast.makeText(context, R.string.local_network_granted,
+                            Toast.LENGTH_SHORT).show();
+                }
                 maybeAutoStartServer();
-                if (scanAfterLocalNetworkGrant) {
-                    startHomeScan();
+                if (wantScan) {
+                    startHomeScan(false);
                 }
             } else {
-                showLocalNetworkSettingsDialog();
+                localNetworkDeniedBefore = true;
+                showLocalNetworkNeededStatus();
+                // 自动申请被拒保持安静；用户主动申请也只等到系统不再弹框时才引导去设置
+                if (byUser && !ActivityCompat.shouldShowRequestPermissionRationale(
+                        this, PERMISSION_LOCAL_NETWORK)) {
+                    showLocalNetworkSettingsDialog();
+                }
             }
-            scanAfterLocalNetworkGrant = false;
         } else if (requestCode == REQUEST_CODE_POST_NOTIFICATIONS) {
             boolean granted = grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED;
@@ -1076,8 +1303,18 @@ public class MainActivity extends BaseActivity
      * 不需要用户展开高级设置再点“扫描”才能看到设备。
      * 结果直接列在主页，点条目即连接。
      */
-    private void startHomeScan() {
-        if (checkLocalNetworkPermissionOrRequest(true)) {
+    private void startHomeScan(boolean userInitiated) {
+        // 已连上会话：局域网列表没有意义，自动/手动扫描都不做
+        if (HFXServer.instance != null) {
+            return;
+        }
+        if (ensureLocalNetworkPermission(true, userInitiated)) {
+            // 缺权限：只提示，不在自动轮询里反复申请；授权后由回调续扫
+            scanStatus.setText(R.string.local_network_needed);
+            if (!userInitiated) {
+                // 自动轮询此时扫也扫不到任何东西，停掉空转，等授权或下次 onResume
+                autoScanHandler.removeCallbacks(autoScanTick);
+            }
             return;
         }
         if (clientScan != null) {
@@ -1089,6 +1326,11 @@ public class MainActivity extends BaseActivity
         clientScan = Discovery.startScan(Discovery.DEFAULT_TIMEOUT_MS, devices -> runOnUiThread(() -> {
             clientScan = null;
             if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            // 扫描期间会话已建立：结果作废，别把“扫描中”又写回状态行
+            if (HFXServer.instance != null) {
+                stopLanScanForSession();
                 return;
             }
             deviceAdapter.clear();
@@ -1107,13 +1349,39 @@ public class MainActivity extends BaseActivity
         }));
     }
 
-    /** 排下一次自动扫描；只有前台才排，避免后台空转发广播耗电。 */
+    /** 排下一次自动扫描；只有前台且没有会话时才排，避免后台/已连接时空转。 */
     private void scheduleAutoScan(long delayMs) {
         autoScanHandler.removeCallbacks(autoScanTick);
-        if (!resumed || isFinishing() || isDestroyed()) {
+        if (!resumed || isFinishing() || isDestroyed() || HFXServer.instance != null) {
             return;
         }
         autoScanHandler.postDelayed(autoScanTick, delayMs);
+    }
+
+    /** 会话已建立：停掉自动扫描、取消进行中的扫描，局域网列表让位给通道状态。 */
+    private void stopLanScanForSession() {
+        autoScanHandler.removeCallbacks(autoScanTick);
+        if (clientScan != null) {
+            clientScan.cancel();
+            clientScan = null;
+        }
+        deviceAdapter.clear();
+        deviceAdapter.notifyDataSetChanged();
+        deviceList.setVisibility(View.GONE);
+        scanStatus.setText(R.string.scan_paused_connected);
+        if (scanChip != null) {
+            scanChip.setEnabled(false);
+            scanChip.setAlpha(0.5f);
+        }
+    }
+
+    /** 会话结束：恢复局域网扫描，设备列表重新可用。 */
+    private void resumeLanScanAfterSession() {
+        if (scanChip != null) {
+            scanChip.setEnabled(true);
+            scanChip.setAlpha(1f);
+        }
+        scheduleAutoScan(0L);
     }
 
     /**
@@ -1346,8 +1614,8 @@ public class MainActivity extends BaseActivity
     }
 
     private void startClient() {
-        // Android 16+ 的本地网络权限在客户端一样要申请
-        if (checkLocalNetworkPermissionOrRequest(false)) {
+        // Android 17+ 的本地网络权限在客户端一样要申请
+        if (ensureLocalNetworkPermission(false, true)) {
             return;
         }
         View view = View.inflate(context, R.layout.dialog_connect_server, null);
@@ -1456,6 +1724,7 @@ public class MainActivity extends BaseActivity
         server = null;
         resetConnectedStatus();
         syncConnectionForeground();
+        resumeLanScanAfterSession();
     }
 
     private void disconnect(boolean toast) {
@@ -1502,6 +1771,7 @@ public class MainActivity extends BaseActivity
         server = null;
         resetConnectedStatus();
         syncConnectionForeground();
+        resumeLanScanAfterSession();
     }
 
     private long getAvailableMemoryMB() {
@@ -1524,6 +1794,11 @@ public class MainActivity extends BaseActivity
         Log.i(TAG, "MainActivity onDestroy live=" + (HFXServer.instance != null)
                 + " server=" + (server != null) + " finishing=" + isFinishing());
         autoScanHandler.removeCallbacks(autoScanTick);
+        // 弹窗是 Activity 的窗口，Activity 销毁时必须收掉，否则新实例里会残留一个已失效的引用
+        if (storageDialog != null) {
+            storageDialog.dismiss();
+            storageDialog = null;
+        }
         if (clientScan != null) {
             clientScan.cancel();
             clientScan = null;

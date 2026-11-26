@@ -269,12 +269,14 @@ public class Main {
         }
 
         if (connect.equals("adb")) {
-            if (!executeAdbForwardCommand(5740, device)) {
+            // 先重置 adb（杀掉全部 adb.exe 再拉起 server），清掉 USB/无线并存时的多传输态
+            final String target = restartAdbAndForward(5740, device);
+            if (target == null) {
                 return;
             }
             System.out.println(Strings.get("adb_forward_succeed"));
             // 优先把主信道切到可达 LAN；没有则回退 127.0.0.1（拔线会中断）
-            String lan = chooseAdbControlAddress(device);
+            String lan = chooseAdbControlAddress(target);
             final String serverAddress = lan != null ? lan : "127.0.0.1";
             Strings.printf("main_channel", lan != null ? "LAN " + lan : "USB_ADB");
             if (lan == null) {
@@ -365,8 +367,7 @@ public class Main {
         }
     }
 
-    public static boolean executeAdbForwardCommand(int port, String device) {
-        try {
+    public static boolean executeAdbForwardCommand(int port, String device) {        try {
             // 获取当前jar包所在的目录
             String jarDirectory = System.getProperty("user.dir");
 
@@ -415,13 +416,90 @@ public class Main {
     }
 
     /**
-     * 解析唯一的 adb 目标：执行 "adb devices"，解析 serial + 空白 + state 行，
-     * 只接受 state 恰好为 "device" 的行；忽略表头、空行、offline、unauthorized。
-     * requestedDevice 非空：仅当该 serial 存在且 state=device 时返回它，否则 null；
-     * 为空：恰好一台 state=device 时返回其 serial，0 台或多台返回 null。
-     * 不打印 serial 到正常输出；异常返回 null。
+     * 点击「ADB 连接」前重置 adb：先结束本机所有 adb.exe，再用随包 adb 重新拉起 server。
+     * <p>
+     * USB 与无线调试同时在线时，不带 -s 的 adb forward 会直接报
+     * “more than one device/emulator”；重启 server 后传输列表回到干净状态
+     * （只剩 USB，无线需要重新 adb connect 才会出现），forward 才能落到唯一目标上。
+     * 注意：这会连带结束其它工具（如 Android Studio）正在使用的 adb server。
      */
-    public static String resolveAdbTarget(String requestedDevice) {
+    public static void restartAdbServer() {
+        // 先杀掉全部 adb.exe（含残留 server 与多传输态）
+        try {
+            ProcessBuilder killer = isWindowsOs()
+                    ? new ProcessBuilder("taskkill", "/F", "/IM", "adb.exe")
+                    : new ProcessBuilder("pkill", "-x", "adb");
+            killer.redirectErrorStream(true);
+            Process kill = killer.start();
+            drainQuietly(kill.getInputStream());
+            kill.waitFor();
+        } catch (Throwable ignored) {
+        }
+        // 再用随包 adb 重新拉起 server（start-server 会等到 daemon 就绪才返回）
+        try {
+            ProcessBuilder starter = new ProcessBuilder(findAdbPath(), "start-server");
+            starter.redirectErrorStream(true);
+            Process start = starter.start();
+            drainQuietly(start.getInputStream());
+            start.waitFor();
+        } catch (Throwable ignored) {
+        }
+        // USB 重新枚举需要一点时间，给后面的 forward 留出窗口
+        try {
+            Thread.sleep(500L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * 重启 adb 后执行 forward，返回实际使用的 adb serial（失败返回 null）。
+     * <p>
+     * 未显式指定 -s 时优先选唯一的 USB 设备：无线调试通常会自动重连，
+     * 出现 USB + 无线两条传输时，不带 -s 的 adb forward 必然报 more than one device/emulator。
+     */
+    public static String restartAdbAndForward(int port, String device) {
+        restartAdbServer();
+        for (int i = 0; i < 3; i++) {
+            String target = resolveAdbForwardTarget(device);
+            if (target != null && executeAdbForwardCommand(port, target)) {
+                return target;
+            }
+            try {
+                Thread.sleep(1500L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** 解析 forward 目标：显式 -s 优先；否则优先唯一的 USB 设备，再退唯一在线设备。 */
+    public static String resolveAdbForwardTarget(String requestedDevice) {
+        List<String> serials = listAdbDeviceSerials();
+        if (requestedDevice != null && !requestedDevice.isEmpty()) {
+            return serials.contains(requestedDevice) ? requestedDevice : null;
+        }
+        String usb = null;
+        int usbCount = 0;
+        for (String serial : serials) {
+            // 无线调试是 "ip:port"，模拟器是 "emulator-xxxx"：都不算物理 USB
+            if (serial.contains(":") || serial.startsWith("emulator-")) {
+                continue;
+            }
+            usb = serial;
+            usbCount++;
+        }
+        if (usbCount == 1) {
+            return usb;
+        }
+        return serials.size() == 1 ? serials.get(0) : null;
+    }
+
+    /** 读 adb devices，只返回 state=device 的 serial（离线/未授权一律忽略）。 */
+    private static List<String> listAdbDeviceSerials() {
+        List<String> devices = new ArrayList<>();
         try {
             String adb = findAdbPath();
             Process process = Runtime.getRuntime().exec(adb + " devices", null,
@@ -439,20 +517,44 @@ public class Main {
                 out.append(line).append('\n');
             }
             process.waitFor();
-            List<String> devices = new ArrayList<>();
             for (String raw : out.toString().split("\\r?\\n")) {
                 String[] parts = raw.trim().split("\\s+");
                 if (parts.length >= 2 && "device".equals(parts[1])) {
                     devices.add(parts[0]);
                 }
             }
-            if (requestedDevice != null && !requestedDevice.isEmpty()) {
-                return devices.contains(requestedDevice) ? requestedDevice : null;
-            }
-            return devices.size() == 1 ? devices.get(0) : null;
         } catch (Throwable ignored) {
-            return null;
         }
+        return devices;
+    }
+
+    /** 把进程输出读空：adb 写满管道缓冲区后会阻塞，不读就会卡死在 waitFor。 */
+    private static void drainQuietly(java.io.InputStream in) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+            while (reader.readLine() != null) {
+                // 丢弃
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private static boolean isWindowsOs() {
+        return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
+    /**
+     * 解析唯一的 adb 目标：执行 "adb devices"，解析 serial + 空白 + state 行，
+     * 只接受 state 恰好为 "device" 的行；忽略表头、空行、offline、unauthorized。
+     * requestedDevice 非空：仅当该 serial 存在且 state=device 时返回它，否则 null；
+     * 为空：恰好一台 state=device 时返回其 serial，0 台或多台返回 null。
+     * 不打印 serial 到正常输出；异常返回 null。
+     */
+    public static String resolveAdbTarget(String requestedDevice) {
+        List<String> devices = listAdbDeviceSerials();
+        if (requestedDevice != null && !requestedDevice.isEmpty()) {
+            return devices.contains(requestedDevice) ? requestedDevice : null;
+        }
+        return devices.size() == 1 ? devices.get(0) : null;
     }
 
     private static String findAdbPath() {

@@ -8,7 +8,7 @@
     <!-- 局域网发现组播通道：没有 MulticastLock 时多数 ROM 直接丢弃收到的组播包，
          组播通道会形同虚设（广播被 AP 过滤时就没有任何回退路径了） -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
-    <!-- Android 16(API 36)+：不授予时本应用发出的局域网 UDP/TCP 会被系统按 uid 丢弃，
+    <!-- Android 17(API 37)+：不授予时本应用发出的局域网 UDP/TCP 会被系统按 uid 丢弃，
          表现为扫描不到、也连不上任何设备。低版本声明无副作用。 -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
