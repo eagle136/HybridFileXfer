@@ -143,6 +143,12 @@ tasks.register('copyApkToOut') {
         if (!apkDir.exists()) {
             return
         }
+        // out/ 是本地便利目录（已被 .gitignore 忽略），CI 上可能不存在/不可写：
+        // 尽力而为，拷不过去也不能让发布流程失败
+        if (!outDir.isDirectory() && !outDir.mkdirs()) {
+            logger.warn("skip copyApkToOut: ${outDir} 不存在且无法创建")
+            return
+        }
         // 构建时间戳（MMddHHmm），执行时取，保证每次构建产物名不同
         def ts = new Date().format('MMddHHmm')
         // APK 固定在 outputs/apk/<变体>/ 下，逐变体目录找 .apk 拷到 out/ 根下
@@ -154,9 +160,13 @@ tasks.register('copyApkToOut') {
             variantDir.listFiles()?.each { f ->
                 if (f.isFile() && f.name.endsWith('.apk')) {
                     def type = f.name.contains('-debug') ? 'debug' : 'release'
-                    java.nio.file.Files.copy(f.toPath(),
-                            new File(outDir, "HybridFileXfer-Android-v${version}-${type}-${ts}.apk").toPath(),
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    try {
+                        java.nio.file.Files.copy(f.toPath(),
+                                new File(outDir, "HybridFileXfer-Android-v${version}-${type}-${ts}.apk").toPath(),
+                                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    } catch (IOException e) {
+                        logger.warn("copyApkToOut 跳过 ${f.name}: ${e.message}")
+                    }
                 }
             }
         }
