@@ -41,7 +41,7 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           log-accepted-android-sdk-licenses: false
-          packages: 'platform-tools cmake;3.10.2.4988404'
+          packages: 'platform-tools cmake;3.22.1'
 
       - name: 'Restore signing keystore'
         env:
@@ -63,10 +63,22 @@ jobs:
           HFX_KEY_ALIAS: ${{ secrets.HFX_KEY_ALIAS }}
           HFX_KEY_PASSWORD: ${{ secrets.HFX_KEY_PASSWORD }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # 不能用 sudo：env_reset 会清掉 HFX_KEYSTORE 等变量，签名直接失效
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --console=plain 2>&1 | tee build.log
+
+      - name: 'Dump build errors'
+        if: failure()
+        working-directory: 'HybridFileXfer-Android'
+        run: |
+          # 匿名也能在 Actions 页面看到 annotation，无需登录即可定位失败原因
+          if [ -f build.log ]; then
+            awk '/^FAILURE: Build failed|^\\* What went wrong/,/^\\* Try:/' build.log | head -n 40 | \
+              sed 's/%/%25/g; s/\\r//g' | while IFS= read -r line; do echo "::error::$line"; done
+            echo '::error::--- last 15 lines ---'
+            tail -n 15 build.log | sed 's/%/%25/g; s/\\r//g' | while IFS= read -r line; do echo "::error::$line"; done
+          fi
 
       - name: 'Verify APK signature'
         id: verify

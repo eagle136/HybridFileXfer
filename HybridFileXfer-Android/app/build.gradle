@@ -27,6 +27,8 @@ android {
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt" // 指定 CMakeLists.txt 位置
+            // CMakeLists 要求 3.22.1；显式锁定，避免 CI 里装了多版本时被旧版本顶掉
+            version "3.22.1"
         }
     }
 
