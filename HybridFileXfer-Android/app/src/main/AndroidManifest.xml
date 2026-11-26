@@ -5,15 +5,30 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 局域网发现组播通道：没有 MulticastLock 时多数 ROM 直接丢弃收到的组播包，
+         组播通道会形同虚设（广播被 AP 过滤时就没有任何回退路径了） -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Android 16(API 36)+：不授予时本应用发出的局域网 UDP/TCP 会被系统按 uid 丢弃，
+         表现为扫描不到、也连不上任何设备。低版本声明无副作用。 -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
+    <!-- 已连接状态的唤醒锁：CPU 部分唤醒 + WiFi 高性能锁，防止锁屏/后台被冻结断链 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- 连接保活：主进程里的 TCP 连接切后台后避免被杀进程 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Android 13+ 前台服务通知可见性；拒绝时保活仍有效，只是看不到通知 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/logo"
         android:label="@string/app_name"
@@ -22,14 +37,21 @@
         android:theme="@style/Theme.HybridFileXfer2"
         tools:targetApi="31" >
         <activity
-            android:name=".ClientActivity"
-            android:exported="false" />
+            android:name="hfx.ClientActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HybridFileXfer2.NoActionBar" />
 
         <service
-            android:name=".IOService"
+            android:name="hfx.IOService"
             android:enabled="true"
             android:process=":IOService" >
         </service>
+
+        <!-- 主进程连接保活前台服务（服务端监听 / 客户端会话共用，引用计数） -->
+        <service
+            android:name="hfx.ConnectionService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
@@ -40,18 +62,19 @@
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <activity
-            android:name=".TransferActivity"
+            android:name="hfx.TransferActivity"
             android:exported="false"
             android:theme="@style/Theme.HybridFileXfer2.NoActionBar" />
         <!--
         <service
-            android:name=".HFXSService"
+            android:name="hfx.HFXSService"
             android:enabled="true"
             android:process=":HFXService" />
         -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true" >
+            android:name="hfx.MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.HybridFileXfer2.NoActionBar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

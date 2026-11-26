@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 超大屏（最小宽度 >= 720dp） -->
+<resources>
+
+    <dimen name="page_pad_h">32dp</dimen>
+    <dimen name="page_pad_top">24dp</dimen>
+    <dimen name="page_pad_bottom">28dp</dimen>
+
+    <dimen name="card_radius">24dp</dimen>
+    <dimen name="card_margin_top">16dp</dimen>
+    <dimen name="card_pad">26dp</dimen>
+    <dimen name="card_pad_h">26dp</dimen>
+    <dimen name="card_pad_v">12dp</dimen>
+
+    <dimen name="gap_xs">7dp</dimen>
+    <dimen name="gap_sm">10dp</dimen>
+    <dimen name="gap_md">14dp</dimen>
+    <dimen name="gap_lg">18dp</dimen>
+    <dimen name="gap_xl">24dp</dimen>
+
+    <dimen name="text_title">22sp</dimen>
+    <dimen name="text_body">18sp</dimen>
+    <dimen name="text_label">17sp</dimen>
+    <dimen name="text_sub">15sp</dimen>
+    <dimen name="text_min">14sp</dimen>
+    <dimen name="text_tiny">12sp</dimen>
+
+    <dimen name="icon_dot">13dp</dimen>
+    <dimen name="icon_arrow">28dp</dimen>
+    <dimen name="icon_sm">22dp</dimen>
+    <dimen name="icon_file">40dp</dimen>
+    <dimen name="shadow_edge">7dp</dimen>
+    <dimen name="progress_width">220dp</dimen>
+
+    <dimen name="btn_height">64dp</dimen>
+    <dimen name="row_height">58dp</dimen>
+    <dimen name="spinner_height">48dp</dimen>
+    <dimen name="chip_pad_h">18dp</dimen>
+    <dimen name="chip_pad_v">9dp</dimen>
+    <dimen name="list_height">260dp</dimen>
+    <dimen name="item_pad">10dp</dimen>
+    <dimen name="item_pad_end">14dp</dimen>
+    <dimen name="icon_pad">6dp</dimen>
+
+</resources>

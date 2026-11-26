@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  尺寸基准档：设计基准为 360dp 宽（主流手机最窄的常见宽度）。
+  其它档位在 values-sw400dp / values-sw600dp / values-sw720dp 里等比放大，
+  低于 360dp 的极老设备回落到本文件。
+
+  规则：
+  - 所有 layout 禁止出现裸 dp / sp 字面量，一律引用 @dimen/xxx。
+  - 结构性比例（列宽、行高分配）用 layout_weight / layout_constraint*_percent，
+    不在这里定义固定值。
+  - 需要随屏幕百分比连续变化的（设备列表高度、底部按钮高度）在代码里用
+    hfx.ui.UiScale 计算，这里只给 XML 预览用的初值。
+-->
+<resources>
+
+    <!-- ===== 页面外边距 ===== -->
+    <dimen name="page_pad_h">12dp</dimen>
+    <dimen name="page_pad_top">12dp</dimen>
+    <dimen name="page_pad_bottom">14dp</dimen>
+
+    <!-- ===== 卡片 ===== -->
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="card_margin_top">10dp</dimen>
+    <dimen name="card_pad">16dp</dimen>
+    <dimen name="card_pad_h">16dp</dimen>
+    <dimen name="card_pad_v">6dp</dimen>
+
+    <!-- ===== 间距 ===== -->
+    <dimen name="gap_xs">4dp</dimen>
+    <dimen name="gap_sm">6dp</dimen>
+    <dimen name="gap_md">8dp</dimen>
+    <dimen name="gap_lg">10dp</dimen>
+    <dimen name="gap_xl">14dp</dimen>
+    <dimen name="hairline">1dp</dimen>
+
+    <!-- ===== 字号 ===== -->
+    <dimen name="text_title">17sp</dimen>
+    <dimen name="text_body">15sp</dimen>
+    <dimen name="text_label">14sp</dimen>
+    <dimen name="text_sub">13sp</dimen>
+    <dimen name="text_min">12sp</dimen>
+    <dimen name="text_tiny">9sp</dimen>
+
+    <!-- ===== 图标与装饰 ===== -->
+    <dimen name="icon_dot">10dp</dimen>
+    <dimen name="icon_arrow">22dp</dimen>
+    <dimen name="icon_sm">16dp</dimen>
+    <dimen name="icon_file">30dp</dimen>
+    <dimen name="shadow_edge">5dp</dimen>
+    <dimen name="progress_width">120dp</dimen>
+
+    <!-- ===== 控件 ===== -->
+    <dimen name="btn_height">50dp</dimen>
+    <dimen name="row_height">44dp</dimen>
+    <dimen name="spinner_height">38dp</dimen>
+    <dimen name="chip_pad_h">12dp</dimen>
+    <dimen name="chip_pad_v">6dp</dimen>
+    <dimen name="list_height">110dp</dimen>
+    <dimen name="item_pad">5dp</dimen>
+    <dimen name="item_pad_end">8dp</dimen>
+    <dimen name="icon_pad">3dp</dimen>
+
+    <!-- ===== 列表项 / 表单（只在基准档定义，各 sw 档按资源回退自动继承） ===== -->
+    <dimen name="icon_row">18dp</dimen>
+    <dimen name="icon_net">55dp</dimen>
+    <dimen name="row_net_h">70dp</dimen>
+    <dimen name="label_min_w">60dp</dimen>
+    <dimen name="form_row_h">40dp</dimen>
+    <dimen name="form_pad_label">25dp</dimen>
+    <dimen name="form_pad_near">13dp</dimen>
+    <dimen name="form_pad_h">20dp</dimen>
+    <dimen name="form_gap">15dp</dimen>
+    <dimen name="icon_drawable_pad">2dp</dimen>
+    <dimen name="list_indent">28dp</dimen>
+    <dimen name="gap_neg_md">-8dp</dimen>
+
+</resources>

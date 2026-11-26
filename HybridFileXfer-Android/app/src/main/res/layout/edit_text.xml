@@ -4,13 +4,14 @@
     android:layout_height="wrap_content"
     android:gravity="center"
     android:orientation="horizontal">
+
     <EditText
         android:id="@+id/edit_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="25dp"
-        android:layout_marginRight="25dp"
-        android:layout_marginTop="15dp"
-        android:layout_marginBottom="15dp" />
+        android:layout_marginStart="@dimen/form_pad_label"
+        android:layout_marginTop="@dimen/form_gap"
+        android:layout_marginEnd="@dimen/form_pad_label"
+        android:layout_marginBottom="@dimen/form_gap" />
 
 </LinearLayout>

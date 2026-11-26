@@ -7,12 +7,13 @@ USB2.0+WIFI6（千兆网口）可以跑到150MB/s（40+110MB/s）！
 
 USB2.0+WIFI6_5G:160mhz+WIFI6_2.4G:40mhz 可以跑到200+MB/s！
 
-## 速度测试（USB2.0+WIFI6:GbE）
+## 3.3 更新
 
-![PixPin_2024-04-15_20-42-19](PixPin_2024-04-15_20-42-19.png)
-
-![PixPin_2024-04-15_20-45-49](PixPin_2024-04-15_20-45-49.png)
-
+- 增加权限验证：连接需要对方确认，读/写数据前需授权
+- 降低传输开销：文件块与信令更紧凑，同链路速度更高
+- 支持安卓端互传，自动扫描设备
+- PC 端同样支持自动扫描局域网设备
+- 传输开始自动切无线通道，拔掉 USB 也不会中断，更稳定可靠
 
 
 # 下载
@@ -20,7 +21,7 @@ USB2.0+WIFI6_5G:160mhz+WIFI6_2.4G:40mhz 可以跑到200+MB/s！
 发布包见 [Releases](https://github.com/eagle136/HybridFileXfer/releases)：
 
 - `app-release.apk` —— 安卓端
-- `HybridFileXfer-PC.zip` —— 电脑端，内置 adb.exe，解压即用
+- `HybridFileXfer-PC.zip` —— 电脑端，解压后双击 `HybridFileXfer-PC.exe` 即用，内置 adb 与命令行脚本
 
 ## 关于签名
 
@@ -33,6 +34,25 @@ USB2.0+WIFI6_5G:160mhz+WIFI6_2.4G:40mhz 可以跑到200+MB/s！
 - 本项目 3.x 及之后的版本沿用同一张证书，仓库内的后续版本可以正常覆盖升级
 - 证书一旦丢失就无法再签出可覆盖安装的包，因此不接受重签请求
 
+## 构建
+
+本项目的主线打包由 GitHub Actions 完成：**推送 `v*` 标签即自动构建并发布**（见 `.github/workflows/release.yml`）。
+
+- Android 端：`assembleRelease` → `app-release.apk`
+- 电脑端：`javac` 编译 → `HybridFileXfer-PC.zip`（内含 jar 与 adb 运行环境）
+
+本地自测只需：
+
+```bat
+:: 安卓（需自行配置 SDK / NDK）
+cd HybridFileXfer-Android && gradlew assembleRelease
+
+:: 电脑端
+:: 用任意 JDK 21 编译 HybridFileXfer-PC/src，主类 hfx.Main
+```
+
+发布所需签名由仓库 Secret 提供（`HFX_KEYSTORE_BASE64`、`HFX_KEYSTORE_PASSWORD`、`HFX_KEY_ALIAS`、`HFX_KEY_PASSWORD`），私钥不入库。
+
 # 使用
 
 ## 模式
@@ -41,7 +61,7 @@ IO服务的启动模式，可选正常、ROOT、ADB，依靠Shizuku启动。
 
 ROOT可以访问data目录那些的，权限最高，ADB权限也稍微高那么点点，比如可以访问外置SD卡目录。
 
-注意：`~/Android/data/`目录需要ROOT模式，ADB做不到。请不要指责我，感到不适请发邮件到谷歌安卓部那抗议！
+注意：`~/Android/data/`目录需要ROOT模式，ADB做不到，这是安卓的权限设计。
 
 ## 网卡与通道
 
@@ -70,17 +90,29 @@ USB_ADB的连接比较特殊，它是通过`adb forward tcp:<port> tcp:<port>`�
 
 USB_ADB的连接需要USB调试，请到开发者选项中打开，**如果你因各种原因不能使用ADB，可以改用USB网络共享代替ADB。**
 
-主界面选择好模式后点击按钮`启动服务器并等待连接`，状态显示“等待连接”后，电脑双击运行启动脚本`启动_ADB连接.bat`（或者你根据启动参数自己编写一个）。如果提示没有java，则需要[安装java运行环境](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)，安装过程不过多阐述，与我的世界安装java环境过程一致。ADB连接方式下，程序首先执行adb转发端口（USB通道），若电脑未授权USB调试，请点击手机上的“允许这台电脑进行调试”。端口转发完成后，启动电脑客户端，客户端先连接控制通道，然后从控制通道获取手机指定的传输通道网卡信息，然后电脑客户端连接到这些传输通道网卡，选择的线路都连接成功后，『传输文件』按钮亮起即可进行文件传输。
+主界面选择好模式后，应用在前台会自动进入“等待连接”并被局域网扫描到（也可手动点按钮`启动服务器并等待连接`）。同一时间只服务一个连接：建立连接后不再应答扫描，断开后自动恢复等待。状态显示“等待连接”后，电脑双击 `HybridFileXfer-PC.exe` 打开窗口，或在命令行执行 `HybridFileXfer-PC.exe -c adb`。电脑端是单文件 exe，已内置裁剪后的 Java 运行环境和 adb.exe，不需要另外安装 Java；首次运行会把运行环境拷贝到 exe 同级的 `HybridFileXfer-3.1` 文件夹（该目录不可写时改用 `%LOCALAPPDATA%\HybridFileXfer\3.1`），之后直接启动。ADB连接方式下，程序首先执行adb转发端口（USB通道），若电脑未授权USB调试，请点击手机上的“允许这台电脑进行调试”。端口转发完成后，启动电脑客户端，客户端先连接控制通道，然后从控制通道获取手机指定的传输通道网卡信息，然后电脑客户端连接到这些传输通道网卡，选择的线路都连接成功后，『传输文件』按钮亮起即可进行文件传输。
 
-|                        选择模式与网卡                        |                           电脑连接                           |
-| :----------------------------------------------------------: | :----------------------------------------------------------: |
-| ![Screenshot_2024-10-13-13-21-20-325_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-13-21-20-325_top.weixiansen574.hybridfilexfer.jpg) | ![Screenshot_2024-10-13-13-20-59-747_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-13-20-59-747_top.weixiansen574.hybridfilexfer.jpg) |
+连接另一台手机时，应用启动会自动扫描局域网一次，并在主页“局域网设备”下列出结果（点 `扫描` 可重扫）；点列表项即发起连接。连接时逐张网卡试连，1 秒内连不上就跳过该网卡，用其余可达通道建立会话。右上角 `刷新` 只刷新网卡列表；服务端正在等待连接时会先自动停掉、按新列表恢复，已连接时需先断开。
+
+被连接的一方会弹出“是否允许 xxx 连接”，30 秒不操作按拒绝。开始传输前，接收文件的一方会收到写/读授权弹窗（`本次允许` / `拒绝` / `允许一次`），30 秒不操作静默拒绝本次；一次命令无论单个还是多个文件都只问一次。
+
+Android 16（API 36）及以上系统新增“本地网络”权限：不授予时，应用发出的局域网 UDP/TCP 会被系统按 UID 丢弃，表现为扫描不到、也连不上任何设备。应用会在启动服务或发起连接前申请，拒绝后可在系统设置里手动开启。
 
 ### 电脑客户端连接
 
 通道分为控制通道与传输通道，控制通道用于通知对方发送或接收文件、列出文件夹、创建文件夹等，传输通道用于传输文件。
 
-`-c` 参数指定的是控制通道的连接方式，为`adb`或IP地址，IP地址可填写任意一个手机的网卡IP。
+电脑端只有一个 `HybridFileXfer-PC.exe`：无参数双击打开窗口；带参数则按命令行模式运行，例如 `HybridFileXfer-PC.exe -c adb`。首次运行先拷贝随包运行环境（仅存储、不做压缩解压），之后直接启动。
+
+电脑端不带 `-c` 启动时是一个窗口：启动自动扫描一次并列出设备，**不会自动连接**，单击设备才连接。
+
+1. 扫描会向局域网广播并在本网段逐个探测，3 秒后列出 `设备名 (IP)`；点 `开始扫描` 可重扫。
+2. 单击列表里的设备即发起连接；已连接时点别的设备会提示“请先断开链接”。
+3. 连接时逐张网卡试连，1 秒内连不上就跳过该网卡，用其余可达通道完成会话。
+4. 点 `ADB 连接`：复用原有 `adb forward`，成功后按同样的方式连接（详见下方 ADB 说明）。
+5. 连接期间显示实时上传/下载速度（1 秒刷新），点 `断开链接` 立即断开并清零。
+
+连接需要手机端确认：首次连接时手机会弹出“是否允许 xxx 连接”，30 秒不操作按拒绝。传输前的读/写授权同样在窗口内完成，窗口固定留出一块权限区显示“是否允许 <设备名>（<IP>）写入/读取数据？”，按钮为 `本次允许` / `拒绝` / `允许一次`；30 秒不操作静默拒绝本次。一次发送命令（单个或多个文件）只算一次授权。
 
 **参数说明**
 
@@ -103,18 +135,27 @@ Examples:
 	HybirdFileXfer -c adb
 	HybirdFileXfer -c adb -s 2dd16815 -d C:\Users\Downloads
 	HybirdFileXfer -c 192.168.1.114 -d D:\Transfer\Files
+	HybirdFileXfer（不带 -c）	打开窗口，点“开始扫描”发现局域网设备
 
-Report bugs to: <https://github.com/weixiansen574/HybirdFileXfer/issues>
+GUI 说明:
+	不带 -c：只打开窗口，不自动扫描、不自动连接
+	-c IP：打开窗口并直连该 IP
+	-c adb：先 adb forward，再优先把主信道切到可达 LAN；
+	         无其它网口可达时回退 127.0.0.1，拔线会中断
+
+Report bugs to: <https://github.com/eagle136/HybridFileXfer/issues>
 
 ```
+
+`-c <IP>` 仍可直接指定控制通道地址，只是会先打开窗口再连接，方便看速度与处理授权。
 
 **完整启动命令示例**
 
 ```
-java -jar HybridFileXfer.jar -c adb
-java -jar HybridFileXfer.jar -c adb -s abcd1234
-java -jar HybridFileXfer.jar -c adb -d C:\Users\Administrator\Desktop\
-java -jar HybridFileXfer.jar -c 192.168.1.2
+HybridFileXfer-PC.exe -c adb
+HybridFileXfer-PC.exe -c adb -s abcd1234
+HybridFileXfer-PC.exe -c adb -d C:\Users\Downloads\
+HybridFileXfer-PC.exe -c 192.168.1.2
 ```
 
 **电脑输出**
@@ -127,6 +168,15 @@ USB_ADB : 5740 端口转发成功！
 正在连接 网卡名：wlan0 远程地址：192.168.8.146 绑定地址：null
 传输通道已全部连接完成
 ```
+
+**ADB 主信道与辅助通道**
+
+选择 `-c adb` 或窗口里的 `ADB 连接` 后，程序先执行 `adb forward`，再从手机读取 IPv4 地址并逐个探活：
+
+- 有可达地址：控制通道连到手机的局域网 IP，`USB_ADB` 只作为额外传输通道；
+- 全部不可达：回退到 `127.0.0.1`，此时 ADB 就是主信道，拔掉数据线会中断。
+
+传输过程中拔掉 USB 线只会少一条 `USB_ADB` 通道，未发完的块会交给其它通道重传，正常传输不中断；其它网卡全部断开时才会终止。
 
 ### 技巧
 
@@ -195,8 +245,6 @@ paru -S hybridfilexfer-git
 
 转发完毕后，即可勾选使用USB_ADB网卡。同时，控制通道也可以选择USB_ADB的本地地址127.0.0.1（不是必须的）
 
-![手机对传](手机对传.jpg)
-
 ## 传输
 
 连接成功后，点击传输文件按钮，即可开始选择文件进行传输。
@@ -208,11 +256,6 @@ UI是双排文件管理器（照搬的MT管理器）。左边文件列表是当�
 长按文件或文件夹，进入选择模式。选择完后，长按任意一个被选中的条目，点击确认对话框的确定即开始传输，选中的文件或文集夹将传输到另一侧的目录里。左往右是传输到电脑，反之就是传输电脑文件到手机。
 
 例如：/sdcard/ > [/sdcard/test/] ==> E:\\transfer\\ > [E:/transfer/test/]
-
-|                                                              |                                                              |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| ![Screenshot_2024-10-13-13-59-51-358_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-13-59-51-358_top.weixiansen574.hybridfilexfer.jpg) | ![Screenshot_2024-10-13-14-00-12-221_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-14-00-12-221_top.weixiansen574.hybridfilexfer.jpg) |
-
 
 传输完毕后，点击右上角“←”退出文件列表，点击停止服务器以正常断开与电脑的连接。
 
@@ -232,10 +275,6 @@ v1.2.0新增书签功能。
 
 点击右上角菜单，书签列表。点击要跳转的书签即可跳转至目标目录。
 
-| 右上角菜单                                                   | 添加书签                                                     | 书签列表                                                     |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| ![Screenshot_2024-10-13-14-16-19-518_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-14-16-19-518_top.weixiansen574.hybridfilexfer.jpg) | ![Screenshot_2024-10-13-14-16-22-997_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-14-16-22-997_top.weixiansen574.hybridfilexfer.jpg) | ![Screenshot_2024-10-13-14-20-12-558_top.weixiansen574.hybridfilexfer](Screenshot_2024-10-13-14-20-12-558_top.weixiansen574.hybridfilexfer.jpg) |
-
 *演示中的~/Android/data/……目录需要root访问（安卓11以上）*
 
 
@@ -245,32 +284,6 @@ v1.2.0新增书签功能。
 将文件传给对方，发送方有一个读文件线程和多个网络发送线程，接收方有一个写文件线程和多个网络接收线程。首先由文件读取线程将文件读取到1MB的文件块中，再将块存到队列里，接着继续读到取下一个块。与此同时有多个传输线程同时向队列里取文件分块，然后向网络发送。接收端这里，多个接收线程都有它自己的队列，将接收的文件块插入队尾，与此同时，文件写入线程，获取所有队列队头索引值最小的一个文件块，将其写入硬盘。由于所有队列中，文件块都遵循从小到大的顺序（这就比如你将一组从小到大的数字，按顺序取出，再放到不同的新数组中，这些新的数组里的数字都遵循从小到大的顺序），这样取出来的文件块，索引就是连续的。若网速比硬盘写入速度快时，写入是顺序的，提升机械硬盘这种设备的性能。若网速比硬盘写入速度慢时，由于一接收到块就立刻被写到硬盘里了，写入就是随机的。
 
 具体请查看源码
-
-# 魔法
-
-禁止以任何形式在飞机杯社区（酷安）分享本软件，否则后果自负！
-
-![酷安真正的logo](飞机杯社区（迫真）.svg)
-
-![IMG_20241125_235527](IMG_20241125_235527.jpg)
-
-酷安斐济杯文章来源[https://mp.weixin.qq.com/s/gt8DiwC3kWmyzjLCze1TRg](https://mp.weixin.qq.com/s/gt8DiwC3kWmyzjLCze1TRg)
-
-# 赞助
-
-前赞助计划[2.5G-WIFI6 GL-MT6000 路由器](https://m.tb.cn/h.gcb0Q6flYgnOqrX?tk=ubRnWtrez83)，已通过大家的赞助+自己的费用购买到，谢谢大家的赞助！
-
-喜欢本软件可以赞助支持！
-
-请备注“赞助双轨快传-[你的github ID]”。所有赞助名单都将公布！
-
-若你想匿名赞助，请填写备注`赞助双轨快传`但不备注你的信息，**否则我无法判断收款码收款意图！将不会纳入赞助名单！**
-
-[查看赞助名单](./赞助名单.md)
-
-![1706328825823](1706328825823.jpg)
-
-
 
 ## 许可证
 
@@ -290,13 +303,11 @@ v1.2.0新增书签功能。
 
 ## 声明
 
-任何人都可自由提交PR，只要你的代码对该项目有帮助！
+欢迎提交 PR、Issue 与使用反馈，只要对项目有帮助就行。
 
-欢迎会编写程序的你提交代码为此项目做贡献，而不是只会在Issues里提一些稀奇古怪的建议。
-
-PR列表个人头像表达含义属于他们的自由。与本项目主无关！
+提交内容请聚焦于代码质量与功能本身，与项目无关的讨论请自行斟酌。
 
 ## Star History
 
-[![Star History Chart](https://star-history.dera.page/svg?repos=weixiansen574/HybridFileXfer&type=Date)](https://star-history.dera.page/#weixiansen574/HybridFileXfer&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=eagle136/HybridFileXfer&type=Date)](https://star-history.dera.page/#eagle136/HybridFileXfer&Date)
 

@@ -3,16 +3,21 @@ plugins {
 }
 
 android {
-    namespace 'top.weixiansen574.hybridfilexfer'
-    compileSdk 34
+    // 源码包统一为 hfx.*（目录更浅）；applicationId 保持不变，
+    // 已安装用户无需卸载重装，数据（书签/配置）可继续覆盖升级。
+    namespace 'hfx'
+    compileSdk 37
+    ndkVersion "30.0.16248370"
 
     defaultConfig {
         //applicationId "com.antutu.ABenchMark" //改成此包名提升传输速度😆
         applicationId "top.weixiansen574.hybridfilexfer"
         minSdk 24
-        targetSdk 34
-        versionCode 310
-        versionName "3.1"
+        targetSdk 37
+        // 330 = 协议版本 VERSION_CODE（3.3）。握手与传输信令随权限验证、开销优化调整，
+        // 与 3.2.x 的字节流不兼容，双端必须同时升级。
+        versionCode 330
+        versionName "3.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"// 指定目标 CPU 架构
@@ -31,25 +36,50 @@ android {
         aidl = true
     }
 
+    // .so 不压缩存入 APK，安装时直接映射，不再解压
+    packaging {
+        jniLibs {
+            useLegacyPackaging false
+        }
+    }
+
     /*
      * 发布签名。3.1 起改用随机生成的证书，不再复用 debug key。
      *
-     * 证书来源优先级：
-     *   1. 环境变量 HFX_KEYSTORE（CI 里从 Secret 解码后指定）
-     *   2. ~/.android/hfx-release.jks（本地构建的默认位置）
-     * 密码通过 HFX_KEYSTORE_PASSWORD 传入，别名默认 hybridfilexfer。
-     * 两者都缺失时退化为未签名构建，保证源码在没有证书的机器上仍可编译。
+     * 证书来源优先级（靠前覆盖靠后）：
+     *   1. 环境变量 HFX_KEYSTORE / HFX_KEYSTORE_PASSWORD（CI 里从 Secret 指定）
+     *   2. 项目内 signing/keystore.properties + signing/<storeFile>
+     *      —— 本地构建的默认来源，无需 export 任何环境变量
+     *   3. ~/.android/hfx-release.jks + ~/.android/hfx-signing.txt（老机器兜底）
+     * 全都没有时退化为未签名构建，保证源码在没证书的机器上仍可编译。
      */
+    def repoRoot = rootProject.projectDir.parentFile
+    def hfxSigningProps = new Properties()
+    def hfxPropsFile = new File(repoRoot, "signing/keystore.properties")
+    if (hfxPropsFile.exists()) {
+        hfxPropsFile.withInputStream { hfxSigningProps.load(it) }
+    }
+
     def hfxKeystore = System.getenv("HFX_KEYSTORE")
+    if (!hfxKeystore && hfxSigningProps.getProperty("storeFile")) {
+        def candidate = new File(new File(repoRoot, "signing"), hfxSigningProps.getProperty("storeFile"))
+        if (candidate.exists()) {
+            hfxKeystore = candidate.absolutePath
+        }
+    }
     if (!hfxKeystore) {
         def fallback = new File(System.getProperty("user.home"), ".android/hfx-release.jks")
         if (fallback.exists()) {
             hfxKeystore = fallback.absolutePath
         }
     }
-    def hfxStorePass = System.getenv("HFX_KEYSTORE_PASSWORD")
-    def hfxKeyAlias = System.getenv("HFX_KEY_ALIAS") ?: "hybridfilexfer"
-    def hfxKeyPass = System.getenv("HFX_KEY_PASSWORD") ?: hfxStorePass
+    def hfxStorePass = System.getenv("HFX_KEYSTORE_PASSWORD") ?: hfxSigningProps.getProperty("storePassword")
+    def hfxKeyAlias = System.getenv("HFX_KEY_ALIAS")
+            ?: hfxSigningProps.getProperty("keyAlias")
+            ?: "hybridfilexfer"
+    def hfxKeyPass = System.getenv("HFX_KEY_PASSWORD")
+            ?: hfxSigningProps.getProperty("keyPassword")
+            ?: hfxStorePass
     def hfxSigningReady = hfxKeystore != null && hfxStorePass != null
             && new File(hfxKeystore.toString()).exists()
 
@@ -65,6 +95,15 @@ android {
     }
 
     buildTypes {
+        /*
+         * debug 也用项目证书签名：这样 debug / release 两种包能互相覆盖安装，
+         * 真机调试时不会因为签名漂移被迫卸载重装。
+         */
+        debug {
+            if (hfxSigningReady) {
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -76,6 +115,56 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+/*
+ * 构建产物自动同步到项目根目录 out/（HybridFileXfer/out）。
+ * 命名沿用既有惯例并附加构建时间戳：
+ *   HybridFileXfer-Android-v<versionName>-<debug|release>-<MMddHHmm>.apk
+ * 版本号升级后产物名自动跟着变；带时间戳后每次构建生成新文件，不覆盖旧包。
+ * out/ 里还有 PC 端产物，故不清目录。
+ */
+// 项目根目录（HybridFileXfer-Android 的上一级）下的 out/ 文件夹
+def projectOutDir = new File(rootProject.projectDir.parentFile, 'out')
+def apkVersionName = android.defaultConfig.versionName
+
+tasks.register('copyApkToOut') {
+    group = 'build'
+    description = "将构建出的 APK 拷贝到 ${projectOutDir}，命名 HybridFileXfer-Android-v<versionName>-<type>-<MMddHHmm>.apk"
+    def outDir = projectOutDir
+    def version = apkVersionName
+    // out/ 是共享产物目录（还有 PC 端文件），不声明任务输出，
+    // 避免 Gradle 对整个目录做增量状态追踪
+    doLast {
+        def apkDir = layout.buildDirectory.dir('outputs/apk').get().asFile
+        if (!apkDir.exists()) {
+            return
+        }
+        // 构建时间戳（MMddHHmm），执行时取，保证每次构建产物名不同
+        def ts = new Date().format('MMddHHmm')
+        // APK 固定在 outputs/apk/<变体>/ 下，逐变体目录找 .apk 拷到 out/ 根下
+        // （不走 Copy spec，避免在 out/ 里复刻 debug/release 子目录）
+        apkDir.listFiles()?.each { variantDir ->
+            if (!variantDir.isDirectory()) {
+                return
+            }
+            variantDir.listFiles()?.each { f ->
+                if (f.isFile() && f.name.endsWith('.apk')) {
+                    def type = f.name.contains('-debug') ? 'debug' : 'release'
+                    java.nio.file.Files.copy(f.toPath(),
+                            new File(outDir, "HybridFileXfer-Android-v${version}-${type}-${ts}.apk").toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        }
+    }
+}
+
+// 任何 assemble* 任务（assemble / assembleDebug / assembleRelease…）完成后自动同步
+tasks.configureEach { task ->
+    if (task.name.toLowerCase().startsWith('assemble')) {
+        task.finalizedBy(copyApkToOut)
     }
 }
 

@@ -1,0 +1,34 @@
+out/
+dist/
+build-pc/
+# 打包脚本的临时目录（打包完移入回收站，不入库）
+temp/
+
+# 签名材料含私钥与密码，绝不入库（CI 从仓库 Secret 取证书）
+signing/
+*.jks
+*.keystore
+*.p12
+
+# 本机打包 / 调试脚本（写死了本机路径、设备清单与局域网 IP，不入库）
+pack.py
+pack-*.bat
+pack-*.ps1
+推送两端.bat
+备份代码.bat
+script/build_all.ps1
+script/pack_helpers.py
+script/push_apk.ps1
+script/devices.txt
+
+# 设备实测脚手架与产物（含真机 IP、序列号、截图）
+test_*.sh
+test_artifacts/
+backup_app_data/
+
+# 本机环境说明、草稿与备份文件
+先看我-本地Gradle.txt
+plan/
+*.bak
+*.bak.*
+*~

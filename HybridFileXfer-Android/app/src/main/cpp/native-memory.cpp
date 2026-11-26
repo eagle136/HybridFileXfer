@@ -7,7 +7,7 @@
 //我不会c++，代码由ChatGPT生成
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_top_weixiansen574_hybridfilexfer_NativeMemory_allocateLargeBuffer(JNIEnv *env, jclass clazz,
+Java_hfx_NativeMemory_allocateLargeBuffer(JNIEnv *env, jclass clazz,
                                                                        jint size) {
     void *buffer = malloc(size);
     if (!buffer) {
@@ -19,7 +19,7 @@ Java_top_weixiansen574_hybridfilexfer_NativeMemory_allocateLargeBuffer(JNIEnv *e
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_top_weixiansen574_hybridfilexfer_NativeMemory_freeBuffer(JNIEnv *env, jclass clazz,
+Java_hfx_NativeMemory_freeBuffer(JNIEnv *env, jclass clazz,
                                                               jobject byteBuffer) {
     void *buffer = env->GetDirectBufferAddress(byteBuffer);
     if (buffer) {

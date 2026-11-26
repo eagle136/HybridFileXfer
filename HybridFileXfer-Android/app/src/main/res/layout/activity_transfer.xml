@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  左右双栏：本机在左、电脑在右，水平 weight 做真 1:1 百分比分栏（手机与平板共用一套）。
+  中间一条 hairline 竖线做分隔；两侧内阴影仍由 shadow_group_left / shadow_group_right 负责。
+  注意：id 必须与代码里的 findViewById 保持一致，左右两栏的 internal id 也不能改。
+-->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".TransferActivity">
@@ -10,6 +16,7 @@
         android:id="@+id/frame_tool"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/primary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -20,42 +27,73 @@
             android:layout_height="match_parent"
             android:background="@color/primary"
             android:theme="@style/ActionBar"
-            app:popupTheme="@style/Theme.HybridFileXfer2" >
+            app:popupTheme="@style/Theme.HybridFileXfer2">
 
         </androidx.appcompat.widget.Toolbar>
 
-        <include layout="@layout/toolbar_select"
+        <include
             android:id="@+id/toolbar_select_left"
-            android:visibility="invisible"/>
+            layout="@layout/toolbar_select"
+            android:visibility="invisible" />
 
-        <include layout="@layout/toolbar_select"
+        <include
             android:id="@+id/toolbar_select_right"
-            android:visibility="invisible"/>
+            layout="@layout/toolbar_select"
+            android:visibility="invisible" />
 
 
     </FrameLayout>
 
+    <!-- 左栏：本机文件 -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/left"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/divider"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toLeftOf="@+id/right"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/frame_tool">
 
+        <TextView
+            android:id="@+id/header_left"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/side_local"
+            android:textColor="@color/fond"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/header_divider_left"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/hairline"
+            android:background="@color/hairline"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_left" />
+
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/loading_left">
+            android:id="@+id/loading_left"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_divider_left">
 
             <TextView
                 android:id="@+id/textView2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/loading__"
-                android:textColor="@color/black"
+                android:textColor="@color/fond"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -63,9 +101,9 @@
 
             <ProgressBar
                 style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                android:indeterminate="true"
-                android:layout_width="120dp"
+                android:layout_width="@dimen/progress_width"
                 android:layout_height="wrap_content"
+                android:indeterminate="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView2" />
@@ -74,8 +112,13 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:id="@+id/files_left"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_divider_left">
 
             <com.l4digital.fastscroll.FastScrollRecyclerView
                 android:id="@+id/rv_left_files"
@@ -89,11 +132,15 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/shadow_group_left"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_divider_left">
 
             <View
-                android:layout_width="5dp"
+                android:layout_width="@dimen/shadow_edge"
                 android:layout_height="match_parent"
                 android:background="@drawable/shadow_right"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -102,7 +149,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="5dp"
+                android:layout_height="@dimen/shadow_edge"
                 android:background="@drawable/shadow_bottom"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -110,7 +157,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="5dp"
+                android:layout_height="@dimen/shadow_edge"
                 android:background="@drawable/shadow_top"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -119,26 +166,67 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- 分隔线：固定 1dp，左右两栏的 weight 只分配剩余空间 -->
+    <View
+        android:id="@+id/divider"
+        android:layout_width="@dimen/hairline"
+        android:layout_height="0dp"
+        android:background="@color/hairline"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/right"
+        app:layout_constraintStart_toEndOf="@+id/left"
+        app:layout_constraintTop_toBottomOf="@+id/frame_tool" />
+
+    <!-- 右栏：电脑文件 -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/right"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintLeft_toRightOf="@id/left"
-        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/divider"
         app:layout_constraintTop_toBottomOf="@+id/frame_tool">
+
+        <TextView
+            android:id="@+id/header_right"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/side_peer"
+            android:textColor="@color/fond"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/header_divider_right"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/hairline"
+            android:background="@color/hairline"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_right" />
+
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/loading_right">
+            android:id="@+id/loading_right"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_divider_right">
 
             <TextView
                 android:id="@+id/textView3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/loading__"
-                android:textColor="@color/black"
+                android:textColor="@color/fond"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -146,9 +234,9 @@
 
             <ProgressBar
                 style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                android:indeterminate="true"
-                android:layout_width="120dp"
+                android:layout_width="@dimen/progress_width"
                 android:layout_height="wrap_content"
+                android:indeterminate="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView3" />
@@ -156,8 +244,13 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
         <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:id="@+id/files_right"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_divider_right">
 
             <com.l4digital.fastscroll.FastScrollRecyclerView
                 android:id="@+id/rv_right_files"
@@ -171,11 +264,15 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/shadow_group_right"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/header_divider_right">
 
             <View
-                android:layout_width="5dp"
+                android:layout_width="@dimen/shadow_edge"
                 android:layout_height="match_parent"
                 android:background="@drawable/shadow_left"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -184,7 +281,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="5dp"
+                android:layout_height="@dimen/shadow_edge"
                 android:background="@drawable/shadow_bottom"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -192,7 +289,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="5dp"
+                android:layout_height="@dimen/shadow_edge"
                 android:background="@drawable/shadow_top"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"

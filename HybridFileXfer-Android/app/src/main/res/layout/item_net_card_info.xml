@@ -8,13 +8,13 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/constraintLayout2"
         android:layout_width="match_parent"
-        android:layout_height="70dp"
+        android:layout_height="@dimen/row_net_h"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
             android:id="@+id/img_interface_type"
-            android:layout_width="55dp"
-            android:layout_height="55dp"
+            android:layout_width="@dimen/icon_net"
+            android:layout_height="@dimen/icon_net"
             android:src="@drawable/wifi"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -23,11 +23,11 @@
         <TextView
             android:id="@+id/txv_interface_name_and_state"
             android:layout_width="wrap_content"
-            android:layout_height="25dp"
-            android:layout_marginStart="10dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/gap_lg"
             android:text="wlan0 | 未运行"
             android:textColor="@color/fond"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_body"
             app:layout_constraintStart_toEndOf="@+id/img_interface_type"
             app:layout_constraintTop_toTopOf="@+id/img_interface_type"
             tools:ignore="HardcodedText" />
@@ -35,17 +35,17 @@
         <TextView
             android:id="@+id/txv_interface_ip"
             android:layout_width="wrap_content"
-            android:layout_height="25dp"
-            android:layout_marginStart="10dp"
-            android:text="192.168.8.2"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/gap_lg"
+            android:text="192.168.1.10"
             app:layout_constraintBottom_toBottomOf="@+id/img_interface_type"
             app:layout_constraintStart_toEndOf="@+id/img_interface_type" />
 
         <CheckBox
+            android:id="@+id/cb_interface_enable"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="10dp"
-            android:id="@+id/cb_interface_enable"
+            android:layout_marginEnd="@dimen/gap_lg"
             android:text="@string/enable"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -53,26 +53,28 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
-        android:layout_marginTop="-8dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_neg_md"
         android:gravity="center_vertical"
         app:layout_constraintTop_toBottomOf="@+id/constraintLayout2">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="@dimen/gap_xs"
             android:text="@string/dian_nao_zhi_ding_wang_ka_ip"
             android:textColor="@color/fond"
-            android:textSize="14sp" />
+            android:textSize="@dimen/text_label" />
 
+        <!-- 原来是 120sp（误用 sp 当宽度），改为按剩余空间撑满，跨密度不再失真 -->
         <EditText
-            android:layout_width="120sp"
-            android:layout_height="wrap_content"
             android:id="@+id/edit_client_bind_ip"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:hint="@string/you_xi_tong_mo_ren_fen_pei"
-            android:textSize="14sp" />
+            android:textSize="@dimen/text_label" />
     </LinearLayout>
 
 

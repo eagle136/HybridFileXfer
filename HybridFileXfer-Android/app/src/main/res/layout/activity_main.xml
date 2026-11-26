@@ -2,111 +2,369 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/page_bg"
+    android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <androidx.cardview.widget.CardView
+    <!-- 自绘工具栏：API 35+ 强制 edge-to-edge 后，AppCompat 的 window ActionBar
+         会被状态栏压住，改成 content 内的 Toolbar 才能自己垫高。 -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp">
+        android:background="@color/primary"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="@style/ActionBar"
+        app:popupTheme="@style/Theme.HybridFileXfer2"
+        app:title="@string/app_name"
+        app:titleTextColor="@color/white" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="10dp">
+            android:paddingHorizontal="@dimen/page_pad_h"
+            android:paddingTop="@dimen/page_pad_top"
+            android:paddingBottom="@dimen/page_pad_bottom">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <!-- ========== 连接状态 ========== -->
+            <androidx.cardview.widget.CardView
+                style="@style/App.Card"
                 android:layout_width="match_parent"
-                android:layout_height="40dp">
-
-                <TextView
-                    android:id="@+id/textView2"
-                    android:layout_width="wrap_content"
-                    android:minWidth="60dp"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="@string/conn"
-                    android:textColor="@color/fond"
-                    android:textSize="22sp"
-                    app:layout_constraintStart_toStartOf="parent" />
-
-                <TextView
-                    android:id="@+id/textView"
-                    android:layout_width="wrap_content"
-                    android:minWidth="60dp"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="@string/mode_"
-                    android:textColor="@color/fond"
-                    android:textSize="16sp"
-                    app:layout_constraintStart_toEndOf="@+id/textView2" />
-
-                <Spinner
-                    android:id="@+id/spinner_mode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:entries="@array/select_mode"
-                    app:layout_constraintStart_toEndOf="@+id/textView" />
+                android:layout_height="wrap_content">
 
                 <LinearLayout
-                    android:id="@+id/refresh"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?selectableItemBackground"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_pad">
 
-                    <ImageView
-                        android:layout_width="25dp"
-                        android:layout_height="25dp"
-                        android:layout_gravity="center_vertical"
-                        android:src="@drawable/baseline_refresh_24" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:id="@+id/status_dot"
+                            android:layout_width="@dimen/icon_dot"
+                            android:layout_height="@dimen/icon_dot"
+                            android:background="@drawable/dot_status" />
+
+                        <TextView
+                            android:id="@+id/txv_status"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/gap_lg"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/status_waiting_lan"
+                            android:textColor="@color/fond"
+                            android:textSize="@dimen/text_title"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/txv_peer"
+                        style="@style/App.SubText"
+                        android:layout_width="match_parent"
+                        android:layout_marginStart="@dimen/gap_xl"
+                        android:layout_marginTop="@dimen/gap_sm"
+                        android:textSize="@dimen/text_sub"
+                        android:visibility="gone"
+                        tools:text="对方：PC (192.168.1.10)"
+                        tools:visibility="visible" />
+
+                    <View
+                        android:id="@+id/channels_divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/hairline"
+                        android:layout_marginTop="@dimen/gap_xl"
+                        android:background="@color/hairline"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                    <LinearLayout
+                        android:id="@+id/connections"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="center_vertical"
-                        android:text="@string/refresh" />
+                        android:layout_marginTop="@dimen/gap_sm"
+                        android:orientation="vertical" />
                 </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rec_view_net_cards"
+            <!-- ========== 局域网设备（主界面常驻，不再藏在折叠面板里） ========== -->
+            <androidx.cardview.widget.CardView
+                style="@style/App.Card"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/card_margin_top">
 
-            <Button
-                android:id="@+id/start_server"
-                style="@style/Widget.AppCompat.Button.Colored"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="@string/start_service_and_wait_onnect" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_pad">
 
-            <Button
-                android:id="@+id/to_transfer"
-                style="@style/Widget.AppCompat.Button.Colored"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:enabled="false"
-                android:text="@string/transfer_files" />
-           <!-- <Button
-                android:id="@+id/test"
-                style="@style/Widget.AppCompat.Button.Colored"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="测试" />-->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
+                        <TextView
+                            style="@style/App.SectionTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/lan_devices" />
+
+                        <TextView
+                            android:id="@+id/refresh_devices"
+                            style="@style/App.Chip"
+                            android:layout_width="wrap_content"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:text="@string/scan" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/txv_scan_status"
+                        style="@style/App.SubText"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="@dimen/gap_sm"
+                        android:ellipsize="none"
+                        android:singleLine="false"
+                        tools:text="发现 2 台设备" />
+
+                    <ListView
+                        android:id="@+id/list_discovered_devices"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/list_height"
+                        android:layout_marginTop="@dimen/gap_xs"
+                        android:divider="@color/hairline"
+                        android:dividerHeight="@dimen/hairline"
+                        android:scrollbars="none"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ========== 连接方式 ========== -->
+            <androidx.cardview.widget.CardView
+                style="@style/App.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/card_margin_top">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/card_pad">
+
+                    <TextView
+                        style="@style/App.SectionTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/connection_mode" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/gap_lg"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <Switch
+                            android:id="@+id/switch_adb"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:minWidth="0dp"
+                            android:text="@string/use_adb_mode"
+                            android:textColor="@color/fond"
+                            android:textSize="@dimen/text_body" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/gap_md"
+                            android:text="@string/io_mode"
+                            android:textColor="@color/fond"
+                            android:textSize="@dimen/text_label" />
+
+                        <Spinner
+                            android:id="@+id/spinner_mode"
+                            android:layout_width="wrap_content"
+                            android:layout_height="@dimen/spinner_height"
+                            android:layout_marginStart="@dimen/gap_xs"
+                            android:entries="@array/select_mode" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/txv_mode_hint"
+                        style="@style/App.SubText"
+                        android:layout_width="match_parent"
+                        android:layout_marginTop="@dimen/gap_md"
+                        android:ellipsize="none"
+                        android:singleLine="false"
+                        tools:text="ADB 模式需要电脑端先执行 adb forward" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ========== 高级设置（折叠） ========== -->
+            <LinearLayout
+                android:id="@+id/advanced_toggle"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/row_height"
+                android:layout_marginTop="@dimen/gap_sm"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="@dimen/gap_md">
+
+                <TextView
+                    style="@style/App.SectionTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/advanced_settings"
+                    android:textSize="@dimen/text_sub" />
+
+                <ImageView
+                    android:id="@+id/advanced_arrow"
+                    android:layout_width="@dimen/icon_arrow"
+                    android:layout_height="@dimen/icon_arrow"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/baseline_expand_more_24"
+                    app:tint="@color/text_sub" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/advanced_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <androidx.cardview.widget.CardView
+                    style="@style/App.Card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/card_pad">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                style="@style/App.SectionTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/net_interfaces" />
+
+                            <LinearLayout
+                                android:id="@+id/refresh"
+                                style="@style/App.Chip"
+                                android:layout_width="wrap_content"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="@dimen/icon_sm"
+                                    android:layout_height="@dimen/icon_sm"
+                                    android:layout_gravity="center_vertical"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/baseline_refresh_24"
+                                    app:tint="@color/accent" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="@dimen/gap_xs"
+                                    android:text="@string/refresh"
+                                    android:textColor="@color/accent"
+                                    android:textSize="@dimen/text_sub" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rec_view_net_cards"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/gap_xs"
+                            android:nestedScrollingEnabled="false" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
         </LinearLayout>
+    </ScrollView>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/hairline"
+        android:background="@color/hairline" />
 
+    <!-- 底部按钮栏：高度在 MainActivity 里按屏高百分比覆盖，这里给 XML 预览初值 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="@dimen/gap_lg">
 
-    </androidx.cardview.widget.CardView>
+        <Button
+            android:id="@+id/disconnect_server"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/btn_height"
+            android:layout_weight="1"
+            android:background="@drawable/bg_btn_outline"
+            android:enabled="false"
+            android:stateListAnimator="@null"
+            android:text="@string/disconnect"
+            android:textAllCaps="false"
+            android:textColor="@color/btn_text_danger"
+            android:textSize="@dimen/text_body" />
+
+        <Button
+            android:id="@+id/to_transfer"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/btn_height"
+            android:layout_marginStart="@dimen/gap_lg"
+            android:layout_weight="1.4"
+            android:background="@drawable/bg_btn_primary"
+            android:enabled="false"
+            android:stateListAnimator="@null"
+            android:text="@string/start_transfer"
+            android:textAllCaps="false"
+            android:textColor="@color/btn_text_primary"
+            android:textSize="@dimen/text_body"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </LinearLayout>

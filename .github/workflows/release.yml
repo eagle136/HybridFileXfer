@@ -119,7 +119,7 @@ jobs:
           javac -encoding UTF-8 -cp annotations.jar -d build/classes @sources.txt
           cp HybridFileXfer-PC/src/*.properties build/classes/
           jar --create --file build/HybridFileXfer.jar \
-              --main-class top.weixiansen574.hybridfilexfer.Main -C build/classes .
+              --main-class hfx.Main -C build/classes .
           ls -l build/HybridFileXfer.jar
 
       - name: 'Package zip'

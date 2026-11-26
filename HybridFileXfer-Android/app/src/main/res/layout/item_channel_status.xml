@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="@dimen/gap_sm">
+
+    <ImageView
+        android:id="@+id/channel_icon"
+        android:layout_width="@dimen/icon_row"
+        android:layout_height="@dimen/icon_row"
+        android:importantForAccessibility="no"
+        android:src="@drawable/wifi" />
+
+    <TextView
+        android:id="@+id/channel_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/gap_lg"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:textColor="@color/fond"
+        android:textSize="@dimen/text_label" />
+
+    <TextView
+        android:id="@+id/channel_state"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/gap_md"
+        android:text="@string/yi_lian_jie"
+        android:textColor="@color/channel_connected"
+        android:textSize="@dimen/text_min" />
+</LinearLayout>

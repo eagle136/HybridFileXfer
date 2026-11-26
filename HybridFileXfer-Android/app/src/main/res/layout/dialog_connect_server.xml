@@ -7,18 +7,18 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="40dp">
+        android:layout_height="@dimen/form_row_h">
 
         <TextView
             android:id="@+id/textView"
             android:layout_width="wrap_content"
-            android:minWidth="60dp"
             android:layout_height="match_parent"
-            android:layout_marginStart="13dp"
+            android:layout_marginStart="@dimen/form_pad_near"
             android:gravity="center"
+            android:minWidth="@dimen/label_min_w"
             android:text="@string/mode_"
             android:textColor="@color/fond"
-            android:textSize="16sp"
+            android:textSize="@dimen/text_body"
             app:layout_constraintStart_toEndOf="@+id/textView2" />
 
         <Spinner
@@ -33,20 +33,20 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="25dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginStart="@dimen/form_pad_label"
+        android:layout_marginTop="@dimen/form_gap"
         android:text="@string/controller_channel_ip"
         android:textColor="@color/fond"
-        android:textSize="15sp" />
+        android:textSize="@dimen/text_body" />
 
     <EditText
         android:id="@+id/edit_server_controller_ip"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="20dp"
-        android:layout_marginTop="15dp"
-        android:layout_marginRight="20dp"
-        android:layout_marginBottom="15dp"
+        android:layout_marginStart="@dimen/form_pad_h"
+        android:layout_marginTop="@dimen/form_gap"
+        android:layout_marginEnd="@dimen/form_pad_h"
+        android:layout_marginBottom="@dimen/form_gap"
         android:autofillHints=""
         android:hint="@string/any_connectable_network_card_ip"
         android:inputType="text" />
@@ -54,22 +54,22 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="25dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginStart="@dimen/form_pad_label"
+        android:layout_marginTop="@dimen/form_gap"
         android:text="@string/home_dir"
         android:textColor="@color/fond"
-        android:textSize="15sp" />
+        android:textSize="@dimen/text_body" />
 
     <EditText
         android:id="@+id/edit_home_dir"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="20dp"
-        android:layout_marginTop="15dp"
-        android:layout_marginRight="20dp"
-        android:layout_marginBottom="15dp"
-        android:inputType="text"
-        android:autofillHints="" />
+        android:layout_marginStart="@dimen/form_pad_h"
+        android:layout_marginTop="@dimen/form_gap"
+        android:layout_marginEnd="@dimen/form_pad_h"
+        android:layout_marginBottom="@dimen/form_gap"
+        android:autofillHints=""
+        android:inputType="text" />
 
 
 </LinearLayout>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 授权弹窗里的单条路径：最多两行，中间省略，避免超长路径把行撑成一条横幅 -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/consent_path"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="middle"
+    android:maxLines="2"
+    android:paddingStart="8dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="6dp"
+    android:textColor="?android:attr/textColorPrimary"
+    android:textSize="12sp"
+    android:textIsSelectable="false" />

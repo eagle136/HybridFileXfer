@@ -20,4 +20,4 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 -dontobfuscate
--keep class top.weixiansen574.** { *; }
+-keep class hfx.** { *; }
